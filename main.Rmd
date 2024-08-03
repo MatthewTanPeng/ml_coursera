@@ -10,7 +10,7 @@ This report utilizes machine learning algorithms to predict the exercise method 
 
 ## Load Required Libraries
 
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 library(randomForest)
 library(caret)
 library(dplyr)
@@ -20,13 +20,13 @@ library(dplyr)
 We download and load the dataset from the provided URL.
 
 ## Download the training dataset
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 train_data <- read.csv(train_url)
 ```
 
 ## View the structure and summary of the dataset
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 str(train_data)
 summary(train_data)
 ```
@@ -36,7 +36,7 @@ The dataset contains various sensor measurements from participants and their exe
 ## Step 1: Data Cleaning
 In the first step of data analysis, we clean the data. This includes removing near-zero variance predictors, removing columns with too many missing values, and eliminating irrelevant columns (e.g., timestamps, usernames).
 
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Remove near-zero variance predictors
 nzv <- nearZeroVar(train_data, saveMetrics = TRUE)
 train_data <- train_data[, !nzv$nzv]
@@ -57,7 +57,7 @@ During data cleaning, we removed columns with too many missing values and irrele
 ## Step 2: Data Preprocessing
 Next, we split the data into training and testing sets and standardize the data. Standardization ensures each variable has a mean of 0 and a standard deviation of 1.
 
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Split the data into training and testing sets
 set.seed(123)
 train_index <- createDataPartition(train_data$classe, p = 0.7, list = FALSE)
@@ -76,7 +76,7 @@ By standardizing the data, we ensure that the values of different features are o
 ## Step 3: Model Building with Random Forest
 We choose Random Forest to build the model because it performs well with data having high variance and multicollinearity.
 
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Build the Random Forest model
 rf_model <- randomForest(classe ~ ., data = training_data_preprocessed, importance = TRUE, ntree = 100)
 
@@ -90,7 +90,7 @@ The Random Forest model can handle high-dimensional data while automatically com
 
 ## Step 4: Cross-Validation
 To evaluate the model's stability and performance, we employ 10-fold cross-validation. Cross-validation helps reduce the risk of overfitting and provides a reliable estimate of the model's generalization ability.
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Set up cross-validation
 train_control <- trainControl(method = "cv", number = 10)
 
@@ -109,7 +109,7 @@ By using 10-fold cross-validation, we obtain a stable performance evaluation res
 ## Step 5: Evaluate Model Performance
 
 Evaluate the model performance on the test set using predictions. We'll use the confusion matrix to measure the model's accuracy and calculate the out-of-sample error rate.
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Predict on the testing set
 predictions <- predict(rf_model, newdata = testing_data_preprocessed)
 
@@ -127,7 +127,7 @@ The confusion matrix shows the model's prediction accuracy on the test set. Addi
 
 ## Step 6: Predict on New Test Cases
 Finally, we use the trained model to predict new test data
-```{r setup, include=TRUE}
+```{r , include=TRUE}
 # Download the test dataset
 test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 test_data <- read.csv(test_url)
