@@ -1,0 +1,158 @@
+---
+title: "ml_coursera_project"
+author: "Matthew Tan"
+date: "2024-08-03"
+output: html_document
+---
+## Overview
+
+This report utilizes machine learning algorithms to predict the exercise method of participants. The target variable is `classe` in the dataset, representing five different exercise methods. We will build a predictive model using the Random Forest algorithm and evaluate its performance.
+
+## Load Required Libraries
+
+```{r setup, include=TRUE}
+library(randomForest)
+library(caret)
+library(dplyr)
+```
+
+## Load the Dataset
+We download and load the dataset from the provided URL.
+
+## Download the training dataset
+```{r setup, include=TRUE}
+train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+train_data <- read.csv(train_url)
+```
+
+## View the structure and summary of the dataset
+```{r setup, include=TRUE}
+str(train_data)
+summary(train_data)
+```
+
+The dataset contains various sensor measurements from participants and their exercise method (classe). We will predict the exercise method based on these measurements.
+
+## Step 1: Data Cleaning
+In the first step of data analysis, we clean the data. This includes removing near-zero variance predictors, removing columns with too many missing values, and eliminating irrelevant columns (e.g., timestamps, usernames).
+
+```{r setup, include=TRUE}
+# Remove near-zero variance predictors
+nzv <- nearZeroVar(train_data, saveMetrics = TRUE)
+train_data <- train_data[, !nzv$nzv]
+
+# Remove columns with too many missing values
+train_data <- train_data[, colSums(is.na(train_data)) < nrow(train_data) * 0.95]
+
+# Remove irrelevant columns
+train_data <- train_data %>%
+  select(-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp))
+
+# Convert 'classe' in 'training_data' to a factor
+train_data$classe <- as.factor(train_data$classe)
+```
+
+During data cleaning, we removed columns with too many missing values and irrelevant features. This helps improve model performance and interpretability.
+
+## Step 2: Data Preprocessing
+Next, we split the data into training and testing sets and standardize the data. Standardization ensures each variable has a mean of 0 and a standard deviation of 1.
+
+```{r setup, include=TRUE}
+# Split the data into training and testing sets
+set.seed(123)
+train_index <- createDataPartition(train_data$classe, p = 0.7, list = FALSE)
+training_data <- train_data[train_index, ]
+testing_data <- train_data[-train_index, ]
+
+# Standardize the data
+preproc <- preProcess(training_data[, -which(names(training_data) == "classe")], method = c("center", "scale"))
+training_data_preprocessed <- predict(preproc, newdata = training_data)
+testing_data_preprocessed <- predict(preproc, newdata = testing_data)
+
+``` 
+
+By standardizing the data, we ensure that the values of different features are on the same scale, which is especially important for algorithms that rely on distance metrics like Random Forest.
+
+## Step 3: Model Building with Random Forest
+We choose Random Forest to build the model because it performs well with data having high variance and multicollinearity.
+
+```{r setup, include=TRUE}
+# Build the Random Forest model
+rf_model <- randomForest(classe ~ ., data = training_data_preprocessed, importance = TRUE, ntree = 100)
+
+# Evaluate variable importance
+importance(rf_model)
+varImpPlot(rf_model)
+
+
+``` 
+The Random Forest model can handle high-dimensional data while automatically computing the importance of features, helping us identify key variables that influence the prediction results. The varImpPlot provides a clear view of the most contributing variables to the predictions.
+
+## Step 4: Cross-Validation
+To evaluate the model's stability and performance, we employ 10-fold cross-validation. Cross-validation helps reduce the risk of overfitting and provides a reliable estimate of the model's generalization ability.
+```{r setup, include=TRUE}
+# Set up cross-validation
+train_control <- trainControl(method = "cv", number = 10)
+
+# Train the model using cross-validation
+set.seed(123)
+cv_model <- train(classe ~ ., data = training_data_preprocessed, method = "rf", trControl = train_control, tuneLength = 3)
+
+# Print the cross-validation results
+print(cv_model)
+
+
+
+``` 
+By using 10-fold cross-validation, we obtain a stable performance evaluation result of the model, which helps enhance the model's generalization ability.
+
+## Step 5: Evaluate Model Performance
+
+Evaluate the model performance on the test set using predictions. We'll use the confusion matrix to measure the model's accuracy and calculate the out-of-sample error rate.
+```{r setup, include=TRUE}
+# Predict on the testing set
+predictions <- predict(rf_model, newdata = testing_data_preprocessed)
+
+# Use a confusion matrix to evaluate accuracy
+confusion_matrix <- confusionMatrix(predictions, testing_data_preprocessed$classe)
+print(confusion_matrix)
+
+# Calculate expected out-of-sample error
+oob_error <- rf_model$err.rate[rf_model$ntree, "OOB"]
+cat("Out-of-sample error rate:", oob_error, "\n")
+
+``` 
+
+The confusion matrix shows the model's prediction accuracy on the test set. Additionally, the Out-of-Bag (OOB) Error of Random Forest provides an effective estimate of the model's generalization error. The OOB error rate reflects the model's predictive capability on unseen data.
+
+## Step 6: Predict on New Test Cases
+Finally, we use the trained model to predict new test data
+```{r setup, include=TRUE}
+# Download the test dataset
+test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+test_data <- read.csv(test_url)
+
+# Ensure columns of test data match those of training data
+common_columns <- intersect(names(training_data_preprocessed), names(test_data))
+test_data <- test_data[, common_columns]
+
+# Add any missing columns in test_data that are present in training_data_preprocessed
+missing_columns <- setdiff(names(training_data_preprocessed), names(test_data))
+for (col in missing_columns) {
+  test_data[[col]] <- NA
+}
+
+# Reorder columns of test_data to match those in training_data_preprocessed
+test_data <- test_data[, names(training_data_preprocessed)]
+
+# Preprocess the test data
+test_data_preprocessed <- predict(preproc, newdata = test_data)
+
+# Make predictions on the test data using the cross-validated model
+test_predictions <- predict(cv_model, newdata = test_data_preprocessed)
+print(test_predictions)
+
+
+``` 
+
+In the steps above, we ensure that the test data's features are consistent with those of the training data and preprocess the data using the pre-processing model. Finally, we use the cross-validated model to predict new test data.
